@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "card-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3939", "--directory", "E:\\projects\\mind-teum"],
+      "port": 3939
+    }
+  ]
+}

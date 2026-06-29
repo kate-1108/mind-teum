@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>Mind.teum 카드</title>
+  <style>
+    /* ===== 폰트 ===== */
+    @font-face {
+      font-family: 'GangwonEdu';
+      src: url('../fonts/GangwonEduSaeum-fixed.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Kkomi';
+      src: url('../fonts/KNPSKkomi-fixed.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'SUIT';
+      src: url('../fonts/SUIT-Light.ttf') format('truetype');
+      font-weight: 300;
+    }
+
+    /* ===== 버전별 컬러 토큰 ===== */
+
+    /* A — Pure Cream | 긍정·성장·동기 */
+    .version-a {
+      --mt-base:    #fdfcfa;
+      --mt-surface: #f7f5f1;
+      --mt-point:   #1c2d4a;
+      --mt-text:    #221e1a;
+      --mt-caption: #786e62;
+      --noise-opacity: 0.035;
+      --body-font: 'GangwonEdu';
+    }
+
+    /* B — Cloud White | 맑은 감성·산뜻 */
+    .version-b {
+      --mt-base:    #fafbfc;
+      --mt-surface: #f0f3f6;
+      --mt-point:   #1c2d4a;
+      --mt-text:    #1e2028;
+      --mt-caption: #475a6e;
+      --noise-opacity: 0.035;
+      --body-font: 'GangwonEdu';
+    }
+
+    /* C — Rice Paper | 따뜻한 공감·위로 */
+    .version-c {
+      --mt-base:    #fcfbf8;
+      --mt-surface: #f7f4ef;
+      --mt-point:   #1c2d4a;
+      --mt-text:    #1e1c18;
+      --mt-caption: #786e62;
+      --noise-opacity: 0.035;
+      --body-font: 'Kkomi';
+    }
+
+    /* D — Deep Navy 골드 | 위로·감성·새벽 */
+    .version-d {
+      --mt-base:    #0e1624;
+      --mt-surface: #182436;
+      --mt-point:   #c8b888;
+      --mt-text:    #f5f8fc;
+      --mt-caption: #786e62;
+      --noise-opacity: 0.05;
+      --body-font: 'Kkomi';
+    }
+
+    /* E — Deep Navy 실버 | 성장·성찰·회복 */
+    .version-e {
+      --mt-base:    #0e1624;
+      --mt-surface: #182436;
+      --mt-point:   #c0c8d4;
+      --mt-text:    #f5f8fc;
+      --mt-caption: #786e62;
+      --noise-opacity: 0.05;
+      --body-font: 'GangwonEdu';
+    }
+
+    /* ===== 리셋 ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      background: #888;
+    }
+
+    /* ===== 카드 컨테이너 ===== */
+    .card {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--mt-base);
+      border: 0.5px solid var(--mt-surface);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    /* 종이 질감 노이즈 레이어 */
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: var(--noise-opacity, 0.035);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ===== 사진 배경 옵션 ===== */
+
+    /* 다크 오버레이 (version-d, version-e에 적합) */
+    .card.photo-dark {
+      background-image:
+        linear-gradient(rgba(14, 22, 36, 0.72), rgba(14, 22, 36, 0.72)),
+        var(--bg-photo);
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* 라이트 오버레이 (version-a, b, c에 적합) */
+    .card.photo-light {
+      background-image:
+        linear-gradient(rgba(253, 252, 250, 0.75), rgba(253, 252, 250, 0.75)),
+        var(--bg-photo);
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* ===== 태그 (상단 고정) ===== */
+    .card-tag {
+      position: absolute;
+      top: 80px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'SUIT', sans-serif;
+      font-weight: 300;
+      font-size: 22px;
+      letter-spacing: 0.14em;
+      line-height: 1.4;
+      color: var(--mt-point);
+      z-index: 2;
+    }
+
+    /* ===== 본문 (수직 중앙) ===== */
+    .card-body {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 72px;
+      right: 72px;
+      text-align: center;
+      font-family: var(--body-font), 'Apple SD Gothic Neo', sans-serif;
+      font-size: 60px;
+      line-height: 2.0;
+      color: var(--mt-text);
+      z-index: 2;
+      word-break: keep-all;
+    }
+
+    /* ===== 핸들 (하단 고정) ===== */
+    .card-handle {
+      position: absolute;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'SUIT', sans-serif;
+      font-weight: 300;
+      font-size: 24px;
+      letter-spacing: 0.10em;
+      line-height: 1.4;
+      color: var(--mt-caption);
+      z-index: 2;
+    }
+
+    /* ===== 강조 스타일 옵션 ===== */
+
+    /* 형광 하이라이트 (powerofpositivity 스타일) */
+    .highlight {
+      background: linear-gradient(transparent 60%, #f5e642 60%);
+      padding: 0 4px;
+    }
+
+    /* 포인트 컬러 단어 (감성기차 스타일) */
+    .point {
+      color: var(--mt-point);
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  사용법                                                          │
+  │                                                                 │
+  │  버전 선택: .card에 version-a ~ version-e 클래스 지정           │
+  │                                                                 │
+  │  사진 배경 (선택):                                               │
+  │    .card에 photo-dark 또는 photo-light 클래스 추가              │
+  │    style="--bg-photo: url('../backgrounds/dark/파일명.jpg')"    │
+  │                                                                 │
+  │  태그 옵션: "— 오늘의 마음 —" 또는 "— 마인드틈 —"              │
+  │  핸들: "— @mind.teum —" (고정)                                  │
+  └─────────────────────────────────────────────────────────────────┘
+-->
+
+<div class="card version-a">
+
+  <span class="card-tag">— 오늘의 마음 —</span>
+
+  <div class="card-body">
+    힘든 시간을<br>
+    도드리고, 버티고, 해서야<br>
+    너에게 하루라는<br>
+    향긋한 일상이 찾아올 거야
+  </div>
+
+  <span class="card-handle">— @mind.teum —</span>
+
+</div>
+
+</body>
+</html>
