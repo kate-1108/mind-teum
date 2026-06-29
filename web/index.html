@@ -1116,38 +1116,37 @@ function applyTextureToFrame(frame, texture, version) {
     const [tr, tg, tb] = light ? [95, 78, 55] : [255, 255, 255];
 
     const cfgs = {
-      smooth: { alpha: 0.0044 },
-      paper:  { alpha: 0.007 },
-      rough:  { alpha: 0.010 },
-      hanji:  { alpha: 0.007, horiz: true },
-      linen:  { alpha: 0.007, grid:  true },
+      smooth: { alpha: 0.008 },
+      paper:  { alpha: 0.013 },
+      rough:  { alpha: 0.020 },
+      hanji:  { alpha: 0.013, horiz: true },
+      linen:  { alpha: 0.013, grid:  true },
     };
     const cfg = cfgs[texture];
     if (!cfg) return;
     const alpha = cfg.alpha * bgMult;
 
-    // 중간 해상도로 생성 후 스케일업 (속도 최적화)
-    const S = 2, SW = Math.ceil(W/S), SH = Math.ceil(H/S);
+    // 단일 픽셀 노이즈 → blur로 블렌딩하여 자연스러운 종이 섬유 질감
     const tmp = document.createElement('canvas');
-    tmp.width = SW; tmp.height = SH;
+    tmp.width = W; tmp.height = H;
     const tc = tmp.getContext('2d');
-    const imgData = tc.createImageData(SW, SH);
+    const imgData = tc.createImageData(W, H);
     const d = imgData.data;
 
-    for (let j = 0; j < SH; j++) {
-      for (let i = 0; i < SW; i++) {
-        // 두 개의 독립 노이즈를 곱해 균일한 회색 평균을 제거
-        let v = Math.random() * Math.random();
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        // 세 난수의 곱 → 분포를 0쪽으로 강하게 치우쳐 희소한 그레인 생성
+        let v = Math.random() * Math.random() * Math.random();
         if (cfg.horiz) {
-          const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 55 / SH)), 2);
+          const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 55 / H)), 2);
           v = v * 0.60 + stripe * 0.40;
         }
         if (cfg.grid) {
-          const hh = Math.pow(Math.abs(Math.sin(j * Math.PI * 45 / SH)), 2);
-          const vv = Math.pow(Math.abs(Math.sin(i * Math.PI * 45 / SW)), 2);
+          const hh = Math.pow(Math.abs(Math.sin(j * Math.PI * 45 / H)), 2);
+          const vv = Math.pow(Math.abs(Math.sin(i * Math.PI * 45 / W)), 2);
           v = v * 0.45 + (hh + vv - hh * vv) * 0.55;
         }
-        const idx = (j * SW + i) * 4;
+        const idx = (j * W + i) * 4;
         d[idx]=tr; d[idx+1]=tg; d[idx+2]=tb;
         d[idx+3] = Math.min(255, Math.floor(v * alpha * 255));
       }
@@ -1156,7 +1155,7 @@ function applyTextureToFrame(frame, texture, version) {
 
     const cv = doc.createElement('canvas');
     cv.id = 'tx-canvas'; cv.width = W; cv.height = H;
-    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;filter:blur(0.6px)';
+    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;filter:blur(1.2px)';
     card.appendChild(cv);
 
     const ctx = cv.getContext('2d');
