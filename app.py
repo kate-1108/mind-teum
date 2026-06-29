@@ -101,9 +101,6 @@ def build_card_html(lines, tag, handle, version, font_override=None,
     }}"""
             bg_overlay_div = '<div class="card-bg-image"></div>'
 
-    # 텍스처는 프론트엔드 Canvas로 처리 (data-texture 속성 전달)
-    noise_html = ''
-    tex_attr = f' data-texture="{texture}"' if texture and texture != 'none' else ''
 
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -151,9 +148,8 @@ def build_card_html(lines, tag, handle, version, font_override=None,
   </style>
 </head>
 <body>
-<div class="card"{tex_attr}>
+<div class="card">
   {bg_overlay_div}
-  <canvas id="tx-canvas" style="position:absolute;top:0;left:0;z-index:2;pointer-events:none;opacity:0"></canvas>
   <span class="card-tag">{html_lib.escape(tag)}</span>
   <div class="card-content">
     {icon_html}
@@ -161,48 +157,6 @@ def build_card_html(lines, tag, handle, version, font_override=None,
   </div>
   <span class="card-handle">{html_lib.escape(handle)}</span>
 </div>
-<script>
-(function(){{
-  var card = document.querySelector('.card');
-  var tex  = card && card.dataset.texture;
-  if (!tex) return;
-  var W = 1080, H = 1350;
-  var cv = document.getElementById('tx-canvas');
-  cv.width = W; cv.height = H;
-  var ctx = cv.getContext('2d');
-  var light = {str(_is_light_bg(v['bg'])).lower()};
-  var cfg = {{
-    smooth:     {{grain:1, scale:2,  alpha: light?0.18:0.10}},
-    paper:      {{grain:1, scale:4,  alpha: light?0.28:0.16}},
-    rough:      {{grain:2, scale:8,  alpha: light?0.38:0.22}},
-    hanji:      {{grain:1, scale:3,  alpha: light?0.22:0.14, horiz:true}},
-    linen:      {{grain:1, scale:3,  alpha: light?0.26:0.16, grid:true}},
-  }}[tex];
-  if (!cfg) return;
-  // 작은 캔버스에 노이즈 생성 후 스케일업 (종이질감 효과)
-  var sw = Math.ceil(W / cfg.scale), sh = Math.ceil(H / cfg.scale);
-  var tmp = document.createElement('canvas');
-  tmp.width = sw; tmp.height = sh;
-  var tc = tmp.getContext('2d');
-  var id = tc.createImageData(sw, sh);
-  var d = id.data;
-  var color = light ? 0 : 255;
-  for (var i=0; i<d.length; i+=4) {{
-    var r = Math.random();
-    // hanji: 수평 방향 강조
-    if (cfg.horiz) {{ var row=(i/4/sw)|0; r = r*0.4 + (Math.sin(row*0.8)*0.5+0.5)*0.6; }}
-    // linen: 격자 방향
-    if (cfg.grid) {{ var px=((i/4)%sw)|0; var py=(i/4/sw)|0; r = r*0.3+(Math.sin(px*1.2)*0.5+0.5)*0.35+(Math.sin(py*1.2)*0.5+0.5)*0.35; }}
-    d[i]=color; d[i+1]=color; d[i+2]=color;
-    d[i+3]=Math.floor(r * cfg.alpha * 255 * (cfg.grain>1?(0.5+Math.random()*0.5):1));
-  }}
-  tc.putImageData(id, 0, 0);
-  ctx.imageSmoothingEnabled = (cfg.scale > 2);
-  ctx.imageSmoothingQuality = 'low';
-  ctx.drawImage(tmp, 0, 0, W, H);
-  cv.style.opacity = '1';
-}})();
-</script>
 </body>
 </html>"""
 

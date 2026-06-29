@@ -520,6 +520,27 @@
     }
     .icon-cell.none-cell.active { color: var(--text); }
 
+    /* ── Toggle switch ───────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+    .toggle-switch {
+      position: relative; width: 32px; height: 18px; flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 18px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 12px; height: 12px;
+      border-radius: 50%; background: #fff;
+      transition: transform 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(14px); }
+
     /* ── Texture buttons ────────────────────────────── */
     .texture-row { display: flex; gap: 6px; flex-wrap: wrap; }
     .texture-btn {
@@ -722,7 +743,13 @@
 
     <!-- 아이콘 -->
     <div>
-      <div class="field-label">아이콘</div>
+      <div class="field-label toggle-wrap">
+        <span>아이콘</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="icon-toggle" checked onchange="onIconToggle(this.checked)">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
       <div class="icon-grid" id="icon-grid"><div style="color:var(--muted);font-size:11px">불러오는 중...</div></div>
     </div>
 
@@ -919,6 +946,21 @@ function selectIcon(key) {
   scheduleUpdate();
 }
 
+function onIconToggle(on) {
+  const grid = document.getElementById('icon-grid');
+  grid.style.opacity = on ? '1' : '0.3';
+  grid.style.pointerEvents = on ? '' : 'none';
+  if (!on) {
+    currentIcon = 'none';
+    document.querySelectorAll('.icon-cell').forEach(c => c.classList.remove('active'));
+  } else {
+    // 토글 켤 때 이전 선택 복원 (없음 제외 첫번째 또는 기존 선택)
+    const prev = document.querySelector('.icon-cell:not(.none-cell)');
+    if (prev) selectIcon(prev.dataset.icon);
+  }
+  scheduleUpdate();
+}
+
 function selectVersion(btn) {
   document.querySelectorAll('.version-swatch').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -1037,13 +1079,84 @@ async function updatePreview() {
   try {
     const res  = await fetch('/api/card', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getPayload()) });
     const html = await res.text();
-    document.getElementById('preview-frame').srcdoc = html;
+    const frame = document.getElementById('preview-frame');
+    frame.srcdoc = html;
+    frame.onload = () => applyTextureToFrame(frame, currentTexture, currentVersion);
     const slideLabel = currentSlide >= 0 ? ` · 슬라이드 ${String(currentSlide+1).padStart(2,'0')}` : '';
     document.getElementById('status').textContent = `버전 ${currentVersion} · ${FONT_NAMES[currentFont] || currentFont}${slideLabel}`;
   } catch (e) {
     document.getElementById('status').textContent = '오류: ' + e.message;
   } finally {
     document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+function isLightBg(hex) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.5;
+}
+
+function applyTextureToFrame(frame, texture, version) {
+  if (!texture || texture === 'none') return;
+  try {
+    const doc  = frame.contentDocument;
+    const card = doc && doc.querySelector('.card');
+    if (!card) return;
+
+    // 기존 텍스처 캔버스 제거 후 새로 생성
+    const old = doc.getElementById('tx-canvas');
+    if (old) old.remove();
+
+    const cfg = {
+      smooth: {scale:2,  alpha:0.20},
+      paper:  {scale:4,  alpha:0.32},
+      rough:  {scale:9,  alpha:0.45},
+      hanji:  {scale:3,  alpha:0.28, horiz:true},
+      linen:  {scale:4,  alpha:0.30, grid:true},
+    }[texture];
+    if (!cfg) return;
+
+    const W = 1080, H = 1350;
+    const bgColor = VERSIONS[version]?.bg || '#faf6ef';
+    const light   = isLightBg(bgColor);
+    const color   = light ? 0 : 255;
+
+    // 저해상도 노이즈 생성 후 스케일업 → 종이 질감
+    const sw = Math.ceil(W / cfg.scale), sh = Math.ceil(H / cfg.scale);
+    const tmp = document.createElement('canvas');
+    tmp.width = sw; tmp.height = sh;
+    const tc  = tmp.getContext('2d');
+    const id  = tc.createImageData(sw, sh);
+    const d   = id.data;
+
+    for (let i = 0; i < d.length; i += 4) {
+      let v = Math.random();
+      if (cfg.horiz) {
+        const row = (i/4/sw)|0;
+        v = v * 0.35 + (Math.sin(row * 1.1) * 0.5 + 0.5) * 0.65;
+      }
+      if (cfg.grid) {
+        const px = (i/4) % sw, py = (i/4/sw)|0;
+        v = v * 0.25 + (Math.sin(px*1.5)*0.5+0.5)*0.4 + (Math.sin(py*1.5)*0.5+0.5)*0.35;
+      }
+      d[i]=color; d[i+1]=color; d[i+2]=color;
+      d[i+3] = Math.min(255, Math.floor(v * cfg.alpha * 255));
+    }
+    tc.putImageData(id, 0, 0);
+
+    const cv = doc.createElement('canvas');
+    cv.id = 'tx-canvas';
+    cv.width = W; cv.height = H;
+    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none';
+    card.appendChild(cv);
+
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(tmp, 0, 0, W, H);
+  } catch(e) {
+    console.warn('texture error:', e);
   }
 }
 
