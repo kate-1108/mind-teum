@@ -2,7 +2,7 @@ services:
   - type: web
     name: mind-teum
     env: python
-    buildCommand: pip install -r requirements.txt && python -m playwright install chromium
+    buildCommand: pip install -r requirements.txt && python -m playwright install --skip-deps chromium
     startCommand: python app.py
     envVars:
       - key: ANTHROPIC_API_KEY
