@@ -1110,71 +1110,45 @@ function applyTextureToFrame(frame, texture, version) {
     const W = 1080, H = 1350;
     const bgColor = VERSIONS[version]?.bg || '#faf6ef';
     const light   = isLightBg(bgColor);
-    const color   = light ? 0 : 255;
-    const bgMult  = light ? 1.0 : 0.50;
+    const bgMult  = light ? 1.0 : 0.55;
 
-    // 미세 노이즈 (풀해상도) + 거친 노이즈 (1/2 해상도) 합성 → 유기적 종이 질감
-    const SW = W, SH = H;
-    const CW = Math.ceil(W/2), CH = Math.ceil(H/2);
+    // 따뜻한 톤 사용 → 회색기 없는 자연스러운 종이 질감
+    const [tr, tg, tb] = light ? [95, 78, 55] : [255, 255, 255];
 
-    const fine = new Float32Array(SW * SH);
-    for (let i = 0; i < fine.length; i++) fine[i] = Math.random();
+    const cfgs = {
+      smooth: { alpha: 0.022 },
+      paper:  { alpha: 0.035 },
+      rough:  { alpha: 0.050 },
+      hanji:  { alpha: 0.035, horiz: true },
+      linen:  { alpha: 0.035, grid:  true },
+    };
+    const cfg = cfgs[texture];
+    if (!cfg) return;
+    const alpha = cfg.alpha * bgMult;
 
-    const coarseSmall = new Float32Array(CW * CH);
-    for (let i = 0; i < coarseSmall.length; i++) coarseSmall[i] = Math.random();
-    // bilinear 보간으로 부드러운 거친 노이즈 (블록 현상 방지)
-    const coarse = new Float32Array(SW * SH);
-    for (let j = 0; j < SH; j++) {
-      for (let i = 0; i < SW; i++) {
-        const fx = i * (CW - 1) / (SW - 1), fy = j * (CH - 1) / (SH - 1);
-        const x0 = Math.floor(fx), y0 = Math.floor(fy);
-        const x1 = Math.min(x0 + 1, CW - 1), y1 = Math.min(y0 + 1, CH - 1);
-        const tx = fx - x0, ty = fy - y0;
-        coarse[j * SW + i] =
-          coarseSmall[y0*CW+x0]*(1-tx)*(1-ty) + coarseSmall[y0*CW+x1]*tx*(1-ty) +
-          coarseSmall[y1*CW+x0]*(1-tx)*ty     + coarseSmall[y1*CW+x1]*tx*ty;
-      }
-    }
-
+    // 중간 해상도로 생성 후 스케일업 (속도 최적화)
+    const S = 2, SW = Math.ceil(W/S), SH = Math.ceil(H/S);
     const tmp = document.createElement('canvas');
     tmp.width = SW; tmp.height = SH;
     const tc = tmp.getContext('2d');
     const imgData = tc.createImageData(SW, SH);
     const d = imgData.data;
 
-    // fw: 미세 노이즈 비중, cw: 거친 노이즈 비중
-    // rough 기준 (두번째 이미지): 유기적 클러스터 느낌
-    const cfgs = {
-      smooth: { fw: 0.97, cw: 0.03, alpha: 0.0027 },
-      paper:  { fw: 0.92, cw: 0.08, alpha: 0.0042 },
-      rough:  { fw: 0.87, cw: 0.13, alpha: 0.0057 },
-      hanji:  { fw: 0.91, cw: 0.09, alpha: 0.0042, horiz: true },
-      linen:  { fw: 0.89, cw: 0.11, alpha: 0.0042, grid:  true },
-    };
-    const cfg = cfgs[texture];
-    if (!cfg) return;
-
-    const alpha = cfg.alpha * bgMult;
-
     for (let j = 0; j < SH; j++) {
       for (let i = 0; i < SW; i++) {
-        const pidx = j * SW + i;
-        let v = fine[pidx] * cfg.fw + coarse[pidx] * cfg.cw;
-
+        // 두 개의 독립 노이즈를 곱해 균일한 회색 평균을 제거
+        let v = Math.random() * Math.random();
         if (cfg.horiz) {
-          // 한지: 유기적 노이즈 + 은은한 수평 섬유 결
-          const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 60 / SH)), 2);
-          v = v * 0.68 + stripe * 0.32;
+          const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 55 / SH)), 2);
+          v = v * 0.60 + stripe * 0.40;
         }
         if (cfg.grid) {
-          // 린넨: 유기적 노이즈 + 은은한 교차 직물 결
-          const hh = Math.pow(Math.abs(Math.sin(j * Math.PI * 50 / SH)), 2);
-          const vv = Math.pow(Math.abs(Math.sin(i * Math.PI * 50 / SW)), 2);
-          v = v * 0.52 + (hh + vv - hh * vv) * 0.48;
+          const hh = Math.pow(Math.abs(Math.sin(j * Math.PI * 45 / SH)), 2);
+          const vv = Math.pow(Math.abs(Math.sin(i * Math.PI * 45 / SW)), 2);
+          v = v * 0.45 + (hh + vv - hh * vv) * 0.55;
         }
-
-        const idx = pidx * 4;
-        d[idx]=color; d[idx+1]=color; d[idx+2]=color;
+        const idx = (j * SW + i) * 4;
+        d[idx]=tr; d[idx+1]=tg; d[idx+2]=tb;
         d[idx+3] = Math.min(255, Math.floor(v * alpha * 255));
       }
     }
@@ -1182,7 +1156,7 @@ function applyTextureToFrame(frame, texture, version) {
 
     const cv = doc.createElement('canvas');
     cv.id = 'tx-canvas'; cv.width = W; cv.height = H;
-    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;filter:blur(0.7px)';
+    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;filter:blur(0.6px)';
     card.appendChild(cv);
 
     const ctx = cv.getContext('2d');
