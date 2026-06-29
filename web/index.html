@@ -1116,11 +1116,11 @@ function applyTextureToFrame(frame, texture, version) {
     const [tr, tg, tb] = light ? [95, 78, 55] : [255, 255, 255];
 
     const cfgs = {
-      smooth: { alpha: 0.008 },
-      paper:  { alpha: 0.013 },
-      rough:  { alpha: 0.020 },
-      hanji:  { alpha: 0.013, horiz: true },
-      linen:  { alpha: 0.013, grid:  true },
+      smooth: { alpha: 0.018 },
+      paper:  { alpha: 0.030 },
+      rough:  { alpha: 0.045 },
+      hanji:  { alpha: 0.030, horiz: true },
+      linen:  { alpha: 0.030, grid:  true },
     };
     const cfg = cfgs[texture];
     if (!cfg) return;
@@ -1135,8 +1135,8 @@ function applyTextureToFrame(frame, texture, version) {
 
     for (let j = 0; j < H; j++) {
       for (let i = 0; i < W; i++) {
-        // 세 난수의 곱 → 분포를 0쪽으로 강하게 치우쳐 희소한 그레인 생성
-        let v = Math.random() * Math.random() * Math.random();
+        // 두 난수의 곱 → 분포를 0쪽으로 치우쳐 자연스러운 희소 그레인
+        let v = Math.random() * Math.random();
         if (cfg.horiz) {
           const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 55 / H)), 2);
           v = v * 0.60 + stripe * 0.40;
