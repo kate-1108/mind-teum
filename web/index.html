@@ -1104,56 +1104,64 @@ function applyTextureToFrame(frame, texture, version) {
     const card = doc && doc.querySelector('.card');
     if (!card) return;
 
-    // 기존 텍스처 캔버스 제거 후 새로 생성
     const old = doc.getElementById('tx-canvas');
     if (old) old.remove();
-
-    const cfg = {
-      smooth: {scale:2,  alpha:0.20},
-      paper:  {scale:4,  alpha:0.32},
-      rough:  {scale:9,  alpha:0.45},
-      hanji:  {scale:3,  alpha:0.28, horiz:true},
-      linen:  {scale:4,  alpha:0.30, grid:true},
-    }[texture];
-    if (!cfg) return;
 
     const W = 1080, H = 1350;
     const bgColor = VERSIONS[version]?.bg || '#faf6ef';
     const light   = isLightBg(bgColor);
     const color   = light ? 0 : 255;
+    const bgMult  = light ? 1.0 : 0.55; // 어두운 배경은 질감 강도 낮춤
 
-    // 저해상도 노이즈 생성 후 스케일업 → 종이 질감
-    const sw = Math.ceil(W / cfg.scale), sh = Math.ceil(H / cfg.scale);
+    const cfgs = {
+      smooth: { S:2, alpha:0.08 },
+      paper:  { S:3, alpha:0.13 },
+      rough:  { S:5, alpha:0.20 },
+      hanji:  { S:3, alpha:0.12, horiz:true  },
+      linen:  { S:3, alpha:0.11, grid:true   },
+    };
+    const cfg = cfgs[texture];
+    if (!cfg) return;
+
+    const alpha = cfg.alpha * bgMult;
+    const S = cfg.S;
+    const sw = Math.ceil(W/S), sh = Math.ceil(H/S);
+
     const tmp = document.createElement('canvas');
     tmp.width = sw; tmp.height = sh;
-    const tc  = tmp.getContext('2d');
-    const id  = tc.createImageData(sw, sh);
-    const d   = id.data;
+    const tc = tmp.getContext('2d');
+    const imgData = tc.createImageData(sw, sh);
+    const d = imgData.data;
 
-    for (let i = 0; i < d.length; i += 4) {
-      let v = Math.random();
-      if (cfg.horiz) {
-        const row = (i/4/sw)|0;
-        v = v * 0.35 + (Math.sin(row * 1.1) * 0.5 + 0.5) * 0.65;
+    for (let j = 0; j < sh; j++) {
+      for (let i = 0; i < sw; i++) {
+        let v = Math.random();
+        if (cfg.horiz) {
+          // 한지: 자연스러운 수평 섬유 결
+          const stripe = Math.pow(Math.abs(Math.sin(j * Math.PI * 72 / sh)), 2);
+          v = v * 0.4 + stripe * 0.6;
+        }
+        if (cfg.grid) {
+          // 린넨: 교차 직물 패턴
+          const hh = Math.pow(Math.abs(Math.sin(j * Math.PI * 60 / sh)), 2);
+          const vv = Math.pow(Math.abs(Math.sin(i * Math.PI * 60 / sw)), 2);
+          v = v * 0.25 + (hh + vv - hh * vv) * 0.75;
+        }
+        const idx = (j * sw + i) * 4;
+        d[idx]=color; d[idx+1]=color; d[idx+2]=color;
+        d[idx+3] = Math.min(255, Math.floor(v * alpha * 255));
       }
-      if (cfg.grid) {
-        const px = (i/4) % sw, py = (i/4/sw)|0;
-        v = v * 0.25 + (Math.sin(px*1.5)*0.5+0.5)*0.4 + (Math.sin(py*1.5)*0.5+0.5)*0.35;
-      }
-      d[i]=color; d[i+1]=color; d[i+2]=color;
-      d[i+3] = Math.min(255, Math.floor(v * cfg.alpha * 255));
     }
-    tc.putImageData(id, 0, 0);
+    tc.putImageData(imgData, 0, 0);
 
     const cv = doc.createElement('canvas');
-    cv.id = 'tx-canvas';
-    cv.width = W; cv.height = H;
+    cv.id = 'tx-canvas'; cv.width = W; cv.height = H;
     cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none';
     card.appendChild(cv);
 
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'low';
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(tmp, 0, 0, W, H);
   } catch(e) {
     console.warn('texture error:', e);
