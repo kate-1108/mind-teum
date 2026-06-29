@@ -1122,12 +1122,17 @@ function applyTextureToFrame(frame, texture, version) {
 
     const coarseSmall = new Float32Array(CW * CH);
     for (let i = 0; i < coarseSmall.length; i++) coarseSmall[i] = Math.random();
+    // bilinear 보간으로 부드러운 거친 노이즈 (블록 현상 방지)
     const coarse = new Float32Array(SW * SH);
     for (let j = 0; j < SH; j++) {
       for (let i = 0; i < SW; i++) {
-        const cx = Math.min(Math.floor(i * CW / SW), CW - 1);
-        const cy = Math.min(Math.floor(j * CH / SH), CH - 1);
-        coarse[j * SW + i] = coarseSmall[cy * CW + cx];
+        const fx = i * (CW - 1) / (SW - 1), fy = j * (CH - 1) / (SH - 1);
+        const x0 = Math.floor(fx), y0 = Math.floor(fy);
+        const x1 = Math.min(x0 + 1, CW - 1), y1 = Math.min(y0 + 1, CH - 1);
+        const tx = fx - x0, ty = fy - y0;
+        coarse[j * SW + i] =
+          coarseSmall[y0*CW+x0]*(1-tx)*(1-ty) + coarseSmall[y0*CW+x1]*tx*(1-ty) +
+          coarseSmall[y1*CW+x0]*(1-tx)*ty     + coarseSmall[y1*CW+x1]*tx*ty;
       }
     }
 
@@ -1140,11 +1145,11 @@ function applyTextureToFrame(frame, texture, version) {
     // fw: 미세 노이즈 비중, cw: 거친 노이즈 비중
     // rough 기준 (두번째 이미지): 유기적 클러스터 느낌
     const cfgs = {
-      smooth: { fw: 0.85, cw: 0.15, alpha: 0.060 },
-      paper:  { fw: 0.60, cw: 0.40, alpha: 0.085 },
-      rough:  { fw: 0.38, cw: 0.62, alpha: 0.115 },
-      hanji:  { fw: 0.55, cw: 0.45, alpha: 0.090, horiz: true },
-      linen:  { fw: 0.42, cw: 0.58, alpha: 0.090, grid:  true },
+      smooth: { fw: 0.85, cw: 0.15, alpha: 0.030 },
+      paper:  { fw: 0.60, cw: 0.40, alpha: 0.045 },
+      rough:  { fw: 0.38, cw: 0.62, alpha: 0.058 },
+      hanji:  { fw: 0.55, cw: 0.45, alpha: 0.046, horiz: true },
+      linen:  { fw: 0.42, cw: 0.58, alpha: 0.046, grid:  true },
     };
     const cfg = cfgs[texture];
     if (!cfg) return;
