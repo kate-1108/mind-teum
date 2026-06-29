@@ -1116,11 +1116,11 @@ function applyTextureToFrame(frame, texture, version) {
     const [tr, tg, tb] = light ? [95, 78, 55] : [255, 255, 255];
 
     const cfgs = {
-      smooth: { alpha: 0.022 },
-      paper:  { alpha: 0.035 },
-      rough:  { alpha: 0.050 },
-      hanji:  { alpha: 0.035, horiz: true },
-      linen:  { alpha: 0.035, grid:  true },
+      smooth: { alpha: 0.0044 },
+      paper:  { alpha: 0.007 },
+      rough:  { alpha: 0.010 },
+      hanji:  { alpha: 0.007, horiz: true },
+      linen:  { alpha: 0.007, grid:  true },
     };
     const cfg = cfgs[texture];
     if (!cfg) return;
