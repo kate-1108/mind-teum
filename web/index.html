@@ -1113,9 +1113,9 @@ function applyTextureToFrame(frame, texture, version) {
     const color   = light ? 0 : 255;
     const bgMult  = light ? 1.0 : 0.50;
 
-    // 미세 노이즈 (540×675) + 거친 노이즈 (135×169) 합성 → 유기적 종이 질감
+    // 미세 노이즈 (540×675) + 거친 노이즈 (180×225) 합성 → 유기적 종이 질감
     const SW = Math.ceil(W/2), SH = Math.ceil(H/2);
-    const CW = Math.ceil(W/8), CH = Math.ceil(H/8);
+    const CW = Math.ceil(W/6), CH = Math.ceil(H/6);
 
     const fine = new Float32Array(SW * SH);
     for (let i = 0; i < fine.length; i++) fine[i] = Math.random();
@@ -1145,11 +1145,11 @@ function applyTextureToFrame(frame, texture, version) {
     // fw: 미세 노이즈 비중, cw: 거친 노이즈 비중
     // rough 기준 (두번째 이미지): 유기적 클러스터 느낌
     const cfgs = {
-      smooth: { fw: 0.85, cw: 0.15, alpha: 0.030 },
-      paper:  { fw: 0.60, cw: 0.40, alpha: 0.045 },
-      rough:  { fw: 0.38, cw: 0.62, alpha: 0.058 },
-      hanji:  { fw: 0.55, cw: 0.45, alpha: 0.046, horiz: true },
-      linen:  { fw: 0.42, cw: 0.58, alpha: 0.046, grid:  true },
+      smooth: { fw: 0.90, cw: 0.10, alpha: 0.018 },
+      paper:  { fw: 0.72, cw: 0.28, alpha: 0.028 },
+      rough:  { fw: 0.55, cw: 0.45, alpha: 0.038 },
+      hanji:  { fw: 0.70, cw: 0.30, alpha: 0.028, horiz: true },
+      linen:  { fw: 0.62, cw: 0.38, alpha: 0.028, grid:  true },
     };
     const cfg = cfgs[texture];
     if (!cfg) return;
@@ -1182,7 +1182,7 @@ function applyTextureToFrame(frame, texture, version) {
 
     const cv = doc.createElement('canvas');
     cv.id = 'tx-canvas'; cv.width = W; cv.height = H;
-    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none';
+    cv.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;filter:blur(1.2px)';
     card.appendChild(cv);
 
     const ctx = cv.getContext('2d');
