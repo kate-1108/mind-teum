@@ -49,26 +49,8 @@ TEXTURES = {
 FONTS_URL_HTTP = f'http://localhost:{PORT}/fonts'
 FONTS_URL_FILE = 'file:///' + str(BASE_DIR / 'fonts').replace('\\', '/')
 
-# ── 이모지 아이콘 ─────────────────────────────────────────────
-ICON_SVGS = {
-    'none':    {'label': '없음',   'emoji': ''},
-    'rainbow': {'label': '무지개', 'emoji': '🌈'},
-    'moon':    {'label': '달·별',  'emoji': '🌙'},
-    'flower':  {'label': '꽃',     'emoji': '🌸'},
-    'sprout':  {'label': '새싹',   'emoji': '🌱'},
-    'cloud':   {'label': '구름',   'emoji': '☁️'},
-    'wave':    {'label': '파도',   'emoji': '🌊'},
-    'star':    {'label': '별',     'emoji': '⭐'},
-    'heart':   {'label': '마음',   'emoji': '🩷'},
-    'coffee':  {'label': '커피',   'emoji': '☕'},
-    'leaf':    {'label': '잎',     'emoji': '🍃'},
-    'bird':    {'label': '새',     'emoji': '🐦'},
-    'sun':     {'label': '해',     'emoji': '☀️'},
-}
-
-
 def build_card_html(lines, tag, handle, version, font_override=None,
-                    font_size=60, tag_font_size=22, icon='', texture='paper', font_base=None,
+                    font_size=60, tag_font_size=22, texture='paper', font_base=None,
                     bg_image='', bg_mode='overlay', bg_opacity=0.35):
     v   = VERSIONS.get(version, VERSIONS['E'])
     tx  = TEXTURES.get(texture, TEXTURES['paper'])
@@ -78,8 +60,6 @@ def build_card_html(lines, tag, handle, version, font_override=None,
     bg_opacity    = float(bg_opacity or 0.35)
     body      = '<br>\n      '.join(html_lib.escape(ln) for ln in lines)
     fb        = font_base or FONTS_URL_HTTP
-    icon_emoji = ICON_SVGS.get(icon or 'none', {}).get('emoji', '')
-    icon_html  = f'<div class="card-icon">{icon_emoji}</div>' if icon_emoji else ''
 
     # 배경 이미지 CSS
     bg_css = ''
@@ -131,10 +111,6 @@ def build_card_html(lines, tag, handle, version, font_override=None,
       position: absolute; top: 50%; transform: translateY(-50%);
       left: 0; right: 0; text-align: center; z-index: 3; padding: 0 72px;
     }}
-    .card-icon {{
-      font-size: 96px; line-height: 1; margin-bottom: 36px;
-      display: block;
-    }}
     .card-body {{
       font-family: '{font}', sans-serif; font-size: {font_size}px; line-height: 2.0;
       color: {v['text']}; word-break: keep-all;
@@ -152,7 +128,6 @@ def build_card_html(lines, tag, handle, version, font_override=None,
   {bg_overlay_div}
   <span class="card-tag">{html_lib.escape(tag)}</span>
   <div class="card-content">
-    {icon_html}
     <div class="card-body">{body}</div>
   </div>
   <span class="card-handle">{html_lib.escape(handle)}</span>
@@ -181,13 +156,6 @@ def fonts(filename):
 def api_versions():
     return Response(json.dumps(VERSIONS), mimetype='application/json')
 
-@app.route('/api/icons')
-def api_icons():
-    return Response(
-        json.dumps({k: {'label': v['label'], 'emoji': v.get('emoji', '')} for k, v in ICON_SVGS.items()}, ensure_ascii=False),
-        mimetype='application/json',
-    )
-
 @app.route('/api/textures')
 def api_textures():
     return Response(
@@ -206,8 +174,8 @@ def api_card():
         font_override=d.get('font'),
         font_size=d.get('fontSize', 60),
         tag_font_size=d.get('tagFontSize', 22),
-        icon=d.get('icon', ''),
         texture=d.get('texture', 'paper'),
+        font_base=request.host_url.rstrip('/') + '/fonts',
         bg_image=d.get('bgImage', ''),
         bg_mode=d.get('bgMode', 'overlay'),
         bg_opacity=d.get('bgOpacity', 0.35),
@@ -431,7 +399,6 @@ def api_export():
             font_override=d.get('font'),
             font_size=d.get('fontSize', 60),
             tag_font_size=d.get('tagFontSize', 22),
-            icon=d.get('icon', ''),
             texture=d.get('texture', 'paper'),
             font_base=FONTS_URL_FILE,
             bg_image=d.get('bgImage', ''),
@@ -499,7 +466,7 @@ def _embed_font_css(family):
 
 
 def build_card_svg(lines, tag, handle, version, font_override=None,
-                   font_size=60, tag_font_size=22, icon='none', texture='paper'):
+                   font_size=60, tag_font_size=22, texture='paper'):
     v = VERSIONS.get(version, VERSIONS['E'])
     tx = TEXTURES.get(texture or 'paper', TEXTURES['paper'])
     font = font_override or v['font']
@@ -535,27 +502,12 @@ def build_card_svg(lines, tag, handle, version, font_override=None,
             f'style="mix-blend-mode:overlay;pointer-events:none"/>'
         )
 
-    # ── 아이콘 배치 ──────────────────────────────────────────────
-    icon_emoji = ICON_SVGS.get(icon or 'none', ICON_SVGS['none']).get('emoji', '')
-    ICON_FONT_SIZE = 100
-    ICON_MARGIN_B  = 40
-    icon_block_h   = (ICON_FONT_SIZE + ICON_MARGIN_B) if icon_emoji else 0
-
     # ── 텍스트 세로 배치 계산 ────────────────────────────────────
     body_h = len(lines) * LINE_H
-    total_content_h = icon_block_h + body_h
-    content_start_y = H / 2 - total_content_h / 2
-
-    icon_element = ''
-    if icon_emoji:
-        icon_y = content_start_y + ICON_FONT_SIZE * 0.85
-        icon_element = (
-            f'<text x="{W//2}" y="{icon_y:.1f}" text-anchor="middle" '
-            f'font-size="{ICON_FONT_SIZE}">{icon_emoji}</text>'
-        )
+    content_start_y = H / 2 - body_h / 2
 
     # 본문 tspan
-    body_start_y = content_start_y + icon_block_h + font_size * 0.75
+    body_start_y = content_start_y + font_size * 0.75
     body_tspans = ''
     for i, line in enumerate(lines):
         y = body_start_y + i * LINE_H
@@ -579,9 +531,6 @@ def build_card_svg(lines, tag, handle, version, font_override=None,
 
 <!-- 텍스처 -->
 {noise_rect}
-
-<!-- 아이콘 -->
-{icon_element}
 
 <!-- 태그 -->
 <text x="{W//2}" y="{tag_y}"
@@ -620,7 +569,6 @@ def api_export_svg():
             font_override=d.get('font'),
             font_size=d.get('fontSize', 60),
             tag_font_size=d.get('tagFontSize', 22),
-            icon=d.get('icon', 'none'),
             texture=d.get('texture', 'paper'),
         )
         raw_name = d.get('filename', f'card-{d.get("version","E").lower()}.png')

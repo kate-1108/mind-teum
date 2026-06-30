@@ -490,36 +490,6 @@
     }
     .preview-overlay.show { opacity: 1; }
 
-    /* ── Icon grid ───────────────────────────────────── */
-    .icon-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
-    }
-    .icon-cell {
-      height: 30px;
-      border: 1.5px solid var(--border);
-      border-radius: 5px;
-      background: rgba(0,0,0,0.03);
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-      overflow: hidden;
-    }
-    .icon-cell:hover  { border-color: var(--accent); background: rgba(74,127,165,0.12); }
-    .icon-cell.active { border-color: var(--gold);   background: rgba(200,169,110,0.14); }
-    .icon-cell svg { width: 100%; height: 100%; display: block; }
-    .icon-cell.none-cell {
-      font-family: 'SUIT', sans-serif;
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-    }
-    .icon-cell.none-cell.active { color: var(--text); }
-
     /* ── Toggle switch ───────────────────────────────── */
     .toggle-wrap { display: flex; align-items: center; gap: 8px; }
     .toggle-switch {
@@ -741,18 +711,6 @@
       <input type="text" id="tag-input" value="— 오늘의 마음 —" oninput="scheduleUpdate()">
     </div>
 
-    <!-- 아이콘 -->
-    <div>
-      <div class="field-label toggle-wrap">
-        <span>아이콘</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="icon-toggle" checked onchange="onIconToggle(this.checked)">
-          <span class="toggle-track"></span>
-        </label>
-      </div>
-      <div class="icon-grid" id="icon-grid"><div style="color:var(--muted);font-size:11px">불러오는 중...</div></div>
-    </div>
-
     <!-- 태그 크기 -->
     <div>
       <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">
@@ -862,7 +820,6 @@ const FONT_NAMES = {
 let currentVersion  = 'A';
 let currentFont     = 'GangwonEdu';
 let currentTexture  = 'paper';
-let currentIcon     = 'none';
 let currentBgImage  = '';
 let currentBgMode   = 'overlay';
 let currentBgOpacity = 0.35;
@@ -909,58 +866,6 @@ function selectTexture(btn) {
   scheduleUpdate();
 }
 
-// ── Icon grid ─────────────────────────────────────────
-async function loadIcons() {
-  try {
-    const res  = await fetch('/api/icons');
-    const data = await res.json();
-    buildIconGrid(data);
-  } catch (e) {
-    document.getElementById('icon-grid').textContent = '아이콘 로드 실패';
-  }
-}
-
-function buildIconGrid(data) {
-  const grid = document.getElementById('icon-grid');
-  grid.innerHTML = '';
-  Object.entries(data).forEach(([key, info]) => {
-    const cell = document.createElement('div');
-    cell.className = 'icon-cell' + (key === 'none' ? ' none-cell' : '') + (key === currentIcon ? ' active' : '');
-    cell.dataset.icon = key;
-    if (key === 'none') {
-      cell.textContent = '없음';
-    } else {
-      cell.textContent = info.emoji || info.label;
-    }
-    cell.title = info.label;
-    cell.onclick = () => selectIcon(key);
-    grid.appendChild(cell);
-  });
-}
-
-function selectIcon(key) {
-  currentIcon = key;
-  document.querySelectorAll('.icon-cell').forEach(c =>
-    c.classList.toggle('active', c.dataset.icon === key)
-  );
-  scheduleUpdate();
-}
-
-function onIconToggle(on) {
-  const grid = document.getElementById('icon-grid');
-  grid.style.opacity = on ? '1' : '0.3';
-  grid.style.pointerEvents = on ? '' : 'none';
-  if (!on) {
-    currentIcon = 'none';
-    document.querySelectorAll('.icon-cell').forEach(c => c.classList.remove('active'));
-  } else {
-    // 토글 켤 때 이전 선택 복원 (없음 제외 첫번째 또는 기존 선택)
-    const prev = document.querySelector('.icon-cell:not(.none-cell)');
-    if (prev) selectIcon(prev.dataset.icon);
-  }
-  scheduleUpdate();
-}
-
 function selectVersion(btn) {
   document.querySelectorAll('.version-swatch').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -998,7 +903,6 @@ function getPayload() {
     font:         currentFont,
     fontSize:     parseInt(document.getElementById('font-size-slider').value),
     tagFontSize:  parseInt(document.getElementById('tag-size-slider').value),
-    icon:         currentIcon,
     texture:      currentTexture,
     bgImage:      currentBgImage,
     bgMode:       currentBgMode,
@@ -1326,7 +1230,6 @@ function selectSlide(idx) {
 
   document.getElementById('tag-input').value  = slide.tag  || '';
   document.getElementById('body-input').value = slide.lines.join('\n');
-  selectIcon(slide.icon || 'none');
   updateNavArrows();
   scheduleUpdate();
 }
@@ -1427,7 +1330,6 @@ async function exportAll() {
     const payload = {
       lines: slide.lines,
       tag: slide.tag,
-      icon: slide.icon || 'none',
       handle,
       version: currentVersion,
       font: currentFont,
@@ -1504,7 +1406,6 @@ async function exportAllSVG() {
     const payload = {
       lines: slide.lines,
       tag: slide.tag,
-      icon: slide.icon || 'none',
       handle,
       version: currentVersion,
       font: currentFont,
@@ -1544,7 +1445,7 @@ function scalePreview() {
 
 window.addEventListener('resize', scalePreview);
 scalePreview();
-loadIcons().then(() => updatePreview());
+updatePreview();
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
